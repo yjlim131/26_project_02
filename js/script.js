@@ -35,6 +35,7 @@
 
   var fullpageRoot = document.getElementById("fullpage");
   var fpApi = null;
+  var isPageHome = document.body.classList.contains("page-home");
 
   if (fullpageRoot && typeof fullpage !== "undefined") {
     fpApi = new fullpage("#fullpage", {
@@ -45,6 +46,8 @@
       navigationTooltips: ["소개", "AI 추천", "탐색", "매거진", "고객지원"],
       showActiveTooltip: true,
       scrollingSpeed: 700,
+      scrollBar: true,
+      scrollOverflow: false,
       afterLoad: function (_origin, destination) {
         var idx = destination && typeof destination.index === "number" ? destination.index : 0;
         var anchor =
@@ -70,6 +73,50 @@
         });
       },
     });
+
+    function syncHeaderWithDocumentScroll() {
+      if (!header || !fullpageRoot) return;
+      var footer = document.getElementById("page-footer");
+      if (!footer) return;
+      if (footer.getBoundingClientRect().top <= 88) {
+        header.classList.remove("is-atop-light");
+        header.classList.add("is-scrolled");
+        syncGnbActiveFromAnchor("support");
+        return;
+      }
+      if (fpApi && typeof fpApi.getActiveSection === "function") {
+        var active = fpApi.getActiveSection();
+        var idx = active && typeof active.index === "number" ? active.index : 0;
+        var anchor = (active && active.anchor) || ANCHORS[idx] || "";
+        syncHeaderForFullpageSectionIndex(idx);
+        syncHeaderLightHero(anchor);
+        syncGnbActiveFromAnchor(anchor);
+      }
+    }
+
+    window.addEventListener("scroll", syncHeaderWithDocumentScroll, { passive: true });
+  } else if (isPageHome) {
+    function syncHomeHeader() {
+      if (!header) return;
+      var y = window.scrollY || document.documentElement.scrollTop;
+      header.classList.toggle("is-scrolled", y > 56);
+    }
+
+    syncHomeHeader();
+    window.addEventListener("scroll", syncHomeHeader, { passive: true });
+
+    document.querySelectorAll(".page-home .gnb-link[data-mega]").forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+      });
+    });
+    if (mobileNav) {
+      mobileNav.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+        });
+      });
+    }
   } else {
     setHeaderScrolled();
     window.addEventListener("scroll", setHeaderScrolled, { passive: true });
@@ -104,6 +151,47 @@
       if (e.key === "Escape") closeMobileMenu();
     });
   }
+
+  var loginModal = document.getElementById("loginModal");
+  var openLoginModalBtn = document.getElementById("openLoginModal");
+  var loginModalClose = document.getElementById("loginModalClose");
+  var loginModalBackdrop = document.getElementById("loginModalBackdrop");
+  var loginModalForm = loginModal ? loginModal.querySelector(".login-modal__form") : null;
+
+  function openLoginModal() {
+    if (!loginModal) return;
+    loginModal.hidden = false;
+    loginModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    if (loginModalClose) loginModalClose.focus();
+  }
+
+  function closeLoginModal() {
+    if (!loginModal) return;
+    loginModal.hidden = true;
+    loginModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if (openLoginModalBtn) openLoginModalBtn.focus();
+  }
+
+  if (openLoginModalBtn) {
+    openLoginModalBtn.addEventListener("click", openLoginModal);
+  }
+  if (loginModalClose) {
+    loginModalClose.addEventListener("click", closeLoginModal);
+  }
+  if (loginModalBackdrop) {
+    loginModalBackdrop.addEventListener("click", closeLoginModal);
+  }
+  if (loginModalForm) {
+    loginModalForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+    });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" || !loginModal || loginModal.hidden) return;
+    closeLoginModal();
+  });
 
   function updateMegaOpenState() {
     if (!header) return;
